@@ -1,2 +1,2 @@
 # mmPoint
-Dense Human Point Clpud Generation from mmWave
+Dense Human Point Cloud Generation from mmWave
