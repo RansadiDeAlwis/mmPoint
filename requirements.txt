@@ -1,0 +1,7 @@
+numpy>=1.26.0
+h5py>=3.10.0
+munch
+PyYAML
+argparse
+tqdm
+easydict
