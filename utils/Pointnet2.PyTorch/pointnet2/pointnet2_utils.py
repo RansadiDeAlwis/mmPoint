@@ -4,7 +4,11 @@ from torch.autograd import Function
 import torch.nn as nn
 from typing import Tuple
 
-import pointnet2_cuda as pointnet2
+# Safe import of CUDA backend
+try:
+    import pointnet2_cuda as pointnet2
+except Exception:
+    pointnet2 = None
 
 
 class FurthestPointSampling(Function):
@@ -13,17 +17,18 @@ class FurthestPointSampling(Function):
         """
         Uses iterative furthest point sampling to select a set of npoint features that have the largest
         minimum distance
-        :param ctx:
         :param xyz: (B, N, 3) where N > npoint
         :param npoint: int, number of features in the sampled set
-        :return:
-             output: (B, npoint) tensor containing the set
+        :return: (B, npoint) indices
         """
         assert xyz.is_contiguous()
 
         B, N, _ = xyz.size()
         output = torch.cuda.IntTensor(B, npoint)
         temp = torch.cuda.FloatTensor(B, N).fill_(1e10)
+
+        if pointnet2 is None or not hasattr(pointnet2, "furthest_point_sampling_wrapper"):
+            raise RuntimeError("furthest_point_sampling requires CUDA extension (pointnet2_cuda).")
 
         pointnet2.furthest_point_sampling_wrapper(B, N, npoint, xyz, temp, output)
         return output
@@ -41,32 +46,46 @@ class GatherOperation(Function):
     @staticmethod
     def forward(ctx, features: torch.Tensor, idx: torch.Tensor) -> torch.Tensor:
         """
-        :param ctx:
         :param features: (B, C, N)
         :param idx: (B, npoint) index tensor of the features to gather
-        :return:
-            output: (B, C, npoint)
+        :return: (B, C, npoint)
         """
         assert features.is_contiguous()
         assert idx.is_contiguous()
 
         B, npoint = idx.size()
         _, C, N = features.size()
-        output = torch.cuda.FloatTensor(B, C, npoint)
+        output = torch.empty(B, C, npoint, device=features.device, dtype=features.dtype)
+
+        if pointnet2 is None or not hasattr(pointnet2, "gather_points_wrapper"):
+            # Fallback: torch.gather along last dim
+            idx_exp = idx.unsqueeze(1).expand(B, C, npoint)              # (B,C,npoint)
+            feats_exp = features                                        # (B,C,N)
+            output = torch.gather(feats_exp, 2, idx_exp).contiguous()   # (B,C,npoint)
+            ctx.for_backwards = (idx, C, N, False)  # False => fallback path
+            return output
 
         pointnet2.gather_points_wrapper(B, C, N, npoint, features, idx, output)
-
-        ctx.for_backwards = (idx, C, N)
+        ctx.for_backwards = (idx, C, N, True)  # True => used CUDA path
         return output
 
     @staticmethod
     def backward(ctx, grad_out):
-        idx, C, N = ctx.for_backwards
+        idx, C, N, used_cuda = ctx.for_backwards
         B, npoint = idx.size()
 
-        grad_features = Variable(torch.cuda.FloatTensor(B, C, N).zero_())
-        grad_out_data = grad_out.data.contiguous()
-        pointnet2.gather_points_grad_wrapper(B, C, N, npoint, grad_out_data, idx, grad_features.data)
+        grad_features = torch.zeros(B, C, N, device=grad_out.device, dtype=grad_out.dtype)
+
+        if used_cuda and pointnet2 is not None and hasattr(pointnet2, "gather_points_grad_wrapper"):
+            pointnet2.gather_points_grad_wrapper(B, C, N, npoint, grad_out.contiguous(), idx, grad_features)
+            return grad_features, None
+
+        # Fallback grad for gather: scatter_add back into (B,C,N)
+        # grad_out: (B,C,npoint)
+        tmp = torch.zeros(B, C, npoint, N, device=grad_out.device, dtype=grad_out.dtype)
+        idx_exp = idx.unsqueeze(1).unsqueeze(-1).expand(B, C, npoint, 1)  # (B,C,npoint,1)
+        tmp.scatter_add_(3, idx_exp, grad_out.unsqueeze(-1))              # add along last dim
+        grad_features = tmp.sum(dim=2)                                    # sum over npoint -> (B,C,N)
         return grad_features, None
 
 
@@ -79,15 +98,15 @@ class ThreeNN(Function):
     def forward(ctx, unknown: torch.Tensor, known: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Find the three nearest neighbors of unknown in known
-        :param ctx:
         :param unknown: (B, N, 3)
-        :param known: (B, M, 3)
-        :return:
-            dist: (B, N, 3) l2 distance to the three nearest neighbors
-            idx: (B, N, 3) index of 3 nearest neighbors
+        :param known:   (B, M, 3)
+        :return: (dist: B,N,3), (idx: B,N,3)
         """
         assert unknown.is_contiguous()
         assert known.is_contiguous()
+
+        if pointnet2 is None or not hasattr(pointnet2, "three_nn_wrapper"):
+            raise RuntimeError("three_nn requires CUDA extension (pointnet2_cuda).")
 
         B, N, _ = unknown.size()
         m = known.size(1)
@@ -110,17 +129,18 @@ class ThreeInterpolate(Function):
     @staticmethod
     def forward(ctx, features: torch.Tensor, idx: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
         """
-        Performs weight linear interpolation on 3 features
-        :param ctx:
+        Weighted linear interpolation on 3 features
         :param features: (B, C, M) Features descriptors to be interpolated from
-        :param idx: (B, n, 3) three nearest neighbors of the target features in features
-        :param weight: (B, n, 3) weights
-        :return:
-            output: (B, C, N) tensor of the interpolated features
+        :param idx:      (B, n, 3) three nearest neighbors of target features
+        :param weight:   (B, n, 3) weights
+        :return:         (B, C, n)
         """
         assert features.is_contiguous()
         assert idx.is_contiguous()
         assert weight.is_contiguous()
+
+        if pointnet2 is None or not hasattr(pointnet2, "three_interpolate_wrapper"):
+            raise RuntimeError("three_interpolate requires CUDA extension (pointnet2_cuda).")
 
         B, c, m = features.size()
         n = idx.size(1)
@@ -132,21 +152,14 @@ class ThreeInterpolate(Function):
 
     @staticmethod
     def backward(ctx, grad_out: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """
-        :param ctx:
-        :param grad_out: (B, C, N) tensor with gradients of outputs
-        :return:
-            grad_features: (B, C, M) tensor with gradients of features
-            None:
-            None:
-        """
         idx, weight, m = ctx.three_interpolate_for_backward
         B, c, n = grad_out.size()
 
-        grad_features = Variable(torch.cuda.FloatTensor(B, c, m).zero_())
-        grad_out_data = grad_out.data.contiguous()
+        if pointnet2 is None or not hasattr(pointnet2, "three_interpolate_grad_wrapper"):
+            raise RuntimeError("three_interpolate backward requires CUDA extension (pointnet2_cuda).")
 
-        pointnet2.three_interpolate_grad_wrapper(B, c, n, m, grad_out_data, idx, weight, grad_features.data)
+        grad_features = torch.cuda.FloatTensor(B, c, m).zero_()
+        pointnet2.three_interpolate_grad_wrapper(B, c, n, m, grad_out.contiguous(), idx, weight, grad_features)
         return grad_features, None, None
 
 
@@ -158,39 +171,52 @@ class GroupingOperation(Function):
     @staticmethod
     def forward(ctx, features: torch.Tensor, idx: torch.Tensor) -> torch.Tensor:
         """
-        :param ctx:
         :param features: (B, C, N) tensor of features to group
-        :param idx: (B, npoint, nsample) tensor containing the indicies of features to group with
-        :return:
-            output: (B, C, npoint, nsample) tensor
+        :param idx:      (B, npoint, nsample) indices into N
+        :return:         (B, C, npoint, nsample)
         """
         assert features.is_contiguous()
         assert idx.is_contiguous()
 
-        B, nfeatures, nsample = idx.size()
-        _, C, N = features.size()
-        output = torch.cuda.FloatTensor(B, C, nfeatures, nsample)
+        B, C, N = features.size()
+        _, npoint, nsample = idx.size()
 
-        pointnet2.group_points_wrapper(B, C, N, nfeatures, nsample, features, idx, output)
+        # Try CUDA path first
+        if (pointnet2 is not None) and hasattr(pointnet2, "group_points_wrapper"):
+            output = torch.empty(B, C, npoint, nsample, device=features.device, dtype=features.dtype)
+            pointnet2.group_points_wrapper(B, C, N, npoint, nsample, features, idx, output)
+            ctx.for_backwards = (idx, N, True)  # used CUDA
+            return output
 
-        ctx.for_backwards = (idx, N)
+        # ---- Pure PyTorch fallback (forward) ----
+        feats_exp = features.unsqueeze(2).expand(B, C, npoint, N)      # (B,C,npoint,N)
+        idx_exp   = idx.unsqueeze(1).expand(B, C, npoint, nsample)     # (B,C,npoint,nsample)
+        output = torch.gather(feats_exp, 3, idx_exp).contiguous()      # (B,C,npoint,nsample)
+        ctx.for_backwards = (idx, N, False)  # used fallback
         return output
 
     @staticmethod
     def backward(ctx, grad_out: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        :param ctx:
-        :param grad_out: (B, C, npoint, nsample) tensor of the gradients of the output from forward
-        :return:
-            grad_features: (B, C, N) gradient of the features
+        :param grad_out: (B, C, npoint, nsample)
+        :return: grad_features: (B, C, N)
         """
-        idx, N = ctx.for_backwards
-
+        idx, N, used_cuda = ctx.for_backwards
         B, C, npoint, nsample = grad_out.size()
-        grad_features = Variable(torch.cuda.FloatTensor(B, C, N).zero_())
 
-        grad_out_data = grad_out.data.contiguous()
-        pointnet2.group_points_grad_wrapper(B, C, N, npoint, nsample, grad_out_data, idx, grad_features.data)
+        # CUDA backward if available
+        if used_cuda and (pointnet2 is not None) and hasattr(pointnet2, "group_points_grad_wrapper"):
+            grad_features = torch.zeros(B, C, N, device=grad_out.device, dtype=grad_out.dtype)
+            pointnet2.group_points_grad_wrapper(B, C, N, npoint, nsample, grad_out.contiguous(), idx, grad_features)
+            return grad_features, None
+
+        # ---- Pure PyTorch fallback (backward) ----
+        # We invert gather by scatter_add along the gathered dimension and summing over npoint
+        grad_features = torch.zeros(B, C, N, device=grad_out.device, dtype=grad_out.dtype)
+        tmp = torch.zeros(B, C, npoint, N, device=grad_out.device, dtype=grad_out.dtype)
+        idx_exp = idx.unsqueeze(1).expand(B, C, npoint, nsample)         # (B,C,npoint,nsample)
+        tmp.scatter_add_(3, idx_exp, grad_out)                           # add along last dim (N)
+        grad_features = tmp.sum(dim=2)                                   # sum over npoint
         return grad_features, None
 
 
@@ -202,16 +228,17 @@ class BallQuery(Function):
     @staticmethod
     def forward(ctx, radius: float, nsample: int, xyz: torch.Tensor, new_xyz: torch.Tensor) -> torch.Tensor:
         """
-        :param ctx:
         :param radius: float, radius of the balls
         :param nsample: int, maximum number of features in the balls
         :param xyz: (B, N, 3) xyz coordinates of the features
         :param new_xyz: (B, npoint, 3) centers of the ball query
-        :return:
-            idx: (B, npoint, nsample) tensor with the indicies of the features that form the query balls
+        :return: (B, npoint, nsample) indices
         """
         assert new_xyz.is_contiguous()
         assert xyz.is_contiguous()
+
+        if pointnet2 is None or not hasattr(pointnet2, "ball_query_wrapper"):
+            raise RuntimeError("ball_query requires CUDA extension (pointnet2_cuda).")
 
         B, N, _ = xyz.size()
         npoint = new_xyz.size(1)
@@ -243,8 +270,7 @@ class QueryAndGroup(nn.Module):
         :param xyz: (B, N, 3) xyz coordinates of the features
         :param new_xyz: (B, npoint, 3) centroids
         :param features: (B, C, N) descriptors of the features
-        :return:
-            new_features: (B, 3 + C, npoint, nsample)
+        :return: (B, 3 + C, npoint, nsample)
         """
         idx = ball_query(self.radius, self.nsample, xyz, new_xyz)
         xyz_trans = xyz.transpose(1, 2).contiguous()
@@ -258,7 +284,7 @@ class QueryAndGroup(nn.Module):
             else:
                 new_features = grouped_features
         else:
-            assert self.use_xyz, "Cannot have not features and not use xyz as a feature!"
+            assert self.use_xyz, "Cannot have no features and not use xyz as a feature!"
             new_features = grouped_xyz
 
         return new_features
@@ -274,8 +300,7 @@ class GroupAll(nn.Module):
         :param xyz: (B, N, 3) xyz coordinates of the features
         :param new_xyz: ignored
         :param features: (B, C, N) descriptors of the features
-        :return:
-            new_features: (B, C + 3, 1, N)
+        :return: (B, C + 3, 1, N)
         """
         grouped_xyz = xyz.transpose(1, 2).unsqueeze(2)
         if features is not None:

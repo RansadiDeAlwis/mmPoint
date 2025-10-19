@@ -1,0 +1,31 @@
+INFO:root:Munch({'batch_size': 2, 'workers': 8, 'nepoch': 10, 'model_name': 'mmPoint', 'start_epoch': 0, 'work_dir': 'log/', 'flag': 'debug', 'manual_seed': None, 'use_mean_feature': False, 'step_interval_to_print': 200, 'epoch_interval_to_save': 10, 'epoch_interval_to_val': 10, 'varying_constant': '0.01, 0.1, 0.5, 1', 'varying_constant_epochs': '5, 15, 30', 'dir_outpath': 'S-PMP-output', 'nk': 20, 'nz': 128, 'lr': 0.0001, 'lr_decay': True, 'lr_decay_interval': 20, 'lr_decay_rate': 0.5, 'lr_step_decay_epochs': None, 'lr_step_decay_rates': None, 'lr_clip': 1e-06, 'optimizer': 'Adam', 'weight_decay': 0, 'betas': '0.9, 0.999', 'layers': '1, 1, 1, 1', 'distribution_loss': 'KLD', 'knn_list': '16', 'pk': 10, 'radius': 0.5, 'normalization': 'UnitBall', 'pointcloud_path': '/content/mm_dataset/pointclouds', 'radar_path': '/content/mm_dataset/radar', 'cache_path': '/content/mmPoint/cache', 'dir_checkpoints': 'S-PMP-output/mmPoint-1019_1249/checkpoints'})
+INFO:root:Random Seed: 8606
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 0/10] EpochTime = 32.315 (s) Losses = ['444.2304', '111.6424']
+INFO:root:Saving net...
+INFO:root:Testing...
+INFO:root:Saving net...
+INFO:root:Saving net...
+INFO:root:[Epoch 0/10] TestTime = 4.333 (s) Curr_cdl1 = 244.78221467385688 Best_cdl1 = 244.78221467385688 Curr_cdl2 = 22.362379628854494 Best_cdl2 = 22.362379628854494
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 1/10] EpochTime = 31.883 (s) Losses = ['263.6162', '24.6433']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 2/10] EpochTime = 31.585 (s) Losses = ['251.4015', '22.7777']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 3/10] EpochTime = 32.069 (s) Losses = ['251.0533', '22.3741']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 4/10] EpochTime = 32.082 (s) Losses = ['252.8218', '22.7495']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 5/10] EpochTime = 31.818 (s) Losses = ['240.5647', '20.6632']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 6/10] EpochTime = 31.954 (s) Losses = ['238.8502', '20.2683']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 7/10] EpochTime = 31.686 (s) Losses = ['234.8041', '19.3832']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 8/10] EpochTime = 31.716 (s) Losses = ['228.8006', '18.3268']
+INFO:root: 
+INFO:root:mmPoint-1019_1249[Epoch 9/10] EpochTime = 32.114 (s) Losses = ['224.0656', '17.6481']
+INFO:root:Testing...
+INFO:root:Saving net...
+INFO:root:Saving net...
+INFO:root:[Epoch 9/10] TestTime = 4.192 (s) Curr_cdl1 = 218.18846836686134 Best_cdl1 = 218.18846836686134 Curr_cdl2 = 17.415527002109837 Best_cdl2 = 17.415527002109837

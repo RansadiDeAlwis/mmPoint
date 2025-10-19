@@ -1,0 +1,41 @@
+batch_size: 2
+workers: 8
+nepoch: 10
+model_name: mmPoint
+start_epoch: 0
+work_dir: log/
+flag: debug
+manual_seed: null
+use_mean_feature: False
+step_interval_to_print: 200
+epoch_interval_to_save: 10
+epoch_interval_to_val: 10
+varying_constant: 0.01, 0.1, 0.5, 1
+varying_constant_epochs: 5, 15, 30
+dir_outpath: S-PMP-output
+nk: 20
+nz: 128
+
+# train
+lr: 0.0001
+lr_decay: True
+lr_decay_interval: 20
+lr_decay_rate: 0.5
+lr_step_decay_epochs: null
+lr_step_decay_rates: null
+lr_clip: 1.e-6
+optimizer: Adam
+weight_decay: 0
+betas: 0.9, 0.999
+
+layers: 1, 1, 1, 1
+distribution_loss: KLD
+knn_list: "16"
+pk: 10
+
+radius: 0.5
+normalization: UnitBall
+# dataset paths
+pointcloud_path: '/content/pointclouds_split'
+radar_path: '/content/processed_radar_split'
+cache_path: '/content/mmPoint/cache'
