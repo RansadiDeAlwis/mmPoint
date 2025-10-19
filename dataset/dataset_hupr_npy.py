@@ -40,10 +40,17 @@ class HuPRDataset(data.Dataset):
         dir_pointcloud = self.pointcloud_path
         dir_radar = self.radar_path
         list_pointcloud = sorted(os.listdir(dir_pointcloud))
+       # --- Dynamically split dataset based on available files ---
+        total_files = len(list_pointcloud)
+        split_idx = int(total_files * 0.8)  # 80% train, 20% test
+
         if self.train:
-            list_pointcloud = list_pointcloud[:31800]
+            list_pointcloud = list_pointcloud[:split_idx]
         else:
-            list_pointcloud = list_pointcloud[31800:]
+            list_pointcloud = list_pointcloud[split_idx:]
+
+        print(f"🧩 Dataset split: {split_idx} train / {len(list_pointcloud)} test (total {total_files})")
+
         print(' Number Files :'+ colored(str(len(list_pointcloud)), "yellow"))
 
         if len(list_pointcloud) != 0:

@@ -1,28 +1,29 @@
 from torch import nn
 from torch.autograd import Function
 import torch
-import importlib
+import importlib.util
 import os
-chamfer_found = importlib.find_loader("chamfer_3D") is not None
+
+# 🔧 Python 3.12 compatible check for compiled chamfer_3D extension
+chamfer_found = importlib.util.find_spec("chamfer_3D") is not None
+
 if not chamfer_found:
-    ## Cool trick from https://github.com/chrdiller
-    print("Jitting Chamfer 3D")
-
+    print("⚠️ Chamfer 3D CUDA extension not found — attempting JIT build.")
     from torch.utils.cpp_extension import load
-    chamfer_3D = load(name="chamfer_3D",
-          sources=[
-              "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer_cuda.cpp"]),
-              "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer3D.cu"]),
-              ])
-    print("Loaded JIT 3D CUDA chamfer distance")
 
+    chamfer_3D = load(
+        name="chamfer_3D",
+        sources=[
+            "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer_cuda.cpp"]),
+            "/".join(os.path.abspath(__file__).split('/')[:-1] + ["chamfer3D.cu"]),
+        ],
+    )
+    print("✅ Loaded JIT 3D CUDA chamfer distance.")
 else:
     import chamfer_3D
-    print("Loaded compiled 3D CUDA chamfer distance")
+    print("✅ Loaded compiled 3D CUDA chamfer distance.")
 
-
-# Chamfer's distance module @thibaultgroueix
-# GPU tensors only
+# Chamfer's distance module
 class chamfer_3DFunction(Function):
     @staticmethod
     def forward(ctx, xyz1, xyz2):
@@ -30,17 +31,10 @@ class chamfer_3DFunction(Function):
         _, m, _ = xyz2.size()
         device = xyz1.device
 
-        dist1 = torch.zeros(batchsize, n)
-        dist2 = torch.zeros(batchsize, m)
-
-        idx1 = torch.zeros(batchsize, n).type(torch.IntTensor)
-        idx2 = torch.zeros(batchsize, m).type(torch.IntTensor)
-
-        dist1 = dist1.to(device)
-        dist2 = dist2.to(device)
-        idx1 = idx1.to(device)
-        idx2 = idx2.to(device)
-        torch.cuda.set_device(device)
+        dist1 = torch.zeros(batchsize, n, device=device)
+        dist2 = torch.zeros(batchsize, m, device=device)
+        idx1 = torch.zeros(batchsize, n, dtype=torch.int32, device=device)
+        idx2 = torch.zeros(batchsize, m, dtype=torch.int32, device=device)
 
         chamfer_3D.forward(xyz1, xyz2, dist1, dist2, idx1, idx2)
         ctx.save_for_backward(xyz1, xyz2, idx1, idx2)
@@ -53,16 +47,11 @@ class chamfer_3DFunction(Function):
         graddist2 = graddist2.contiguous()
         device = graddist1.device
 
-        gradxyz1 = torch.zeros(xyz1.size())
-        gradxyz2 = torch.zeros(xyz2.size())
+        gradxyz1 = torch.zeros_like(xyz1, device=device)
+        gradxyz2 = torch.zeros_like(xyz2, device=device)
 
-        gradxyz1 = gradxyz1.to(device)
-        gradxyz2 = gradxyz2.to(device)
-        chamfer_3D.backward(
-            xyz1, xyz2, gradxyz1, gradxyz2, graddist1, graddist2, idx1, idx2
-        )
+        chamfer_3D.backward(xyz1, xyz2, gradxyz1, gradxyz2, graddist1, graddist2, idx1, idx2)
         return gradxyz1, gradxyz2
-
 
 class chamfer_3DDist(nn.Module):
     def __init__(self):
@@ -72,4 +61,3 @@ class chamfer_3DDist(nn.Module):
         input1 = input1.contiguous()
         input2 = input2.contiguous()
         return chamfer_3DFunction.apply(input1, input2)
-

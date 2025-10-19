@@ -65,7 +65,7 @@ class RadarObject():
         temp[1::2] = adcData[3]
         LVDS[1] = temp
 
-        adcData = np.zeros((self.numRX, int(fileSize / self.numRX)), dtype=np.complex64)
+        adcData = np.zeros((self.numRX, int(fileSize / self.numRX)), dtype='complex_')
         iter = 0
         for i in range(0, fileSize, self.numADCSamples * 4):
             adcData[0][iter:iter + self.numADCSamples] = LVDS[0][i:i + self.numADCSamples] + np.sqrt(-1 + 0j) * LVDS[1][
@@ -108,8 +108,8 @@ class RadarObject():
         return out
 
     def generateHeatmap(self, frame):
-        dataRadar = np.zeros((self.numRX * 2, self.idxProcChirp, self.numADCSamples), dtype=np.complex64)
-        dataRadar2 = np.zeros((self.numRX, self.idxProcChirp, self.numADCSamples), dtype=np.complex64)
+        dataRadar = np.zeros((self.numRX * 2, self.idxProcChirp, self.numADCSamples), dtype='complex_')
+        dataRadar2 = np.zeros((self.numRX, self.idxProcChirp, self.numADCSamples), dtype='complex_')
 
         # Process radar data with TDM-MIMO
         for idxRX in range(self.numRX):
@@ -158,10 +158,10 @@ class RadarObject():
 
         # shft the velocity information
         dataTemp = np.zeros((self.idxProcChirp, self.numADCSamples // rate, self.numAngleBins, self.numEleBins),
-                            dtype=np.complex64)
+                            dtype='complex_')
         dataFFTGroup = np.zeros(
             (self.idxProcChirp // self.numGroupChirp, self.numADCSamples // rate, self.numAngleBins, self.numEleBins),
-            dtype=np.complex64)
+            dtype='complex_')
         for idxEle in range(self.numEleBins):
             for idxRX in range(self.numAngleBins):
                 for idxADC in range(self.numADCSamples // rate):

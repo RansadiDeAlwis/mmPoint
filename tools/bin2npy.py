@@ -1,56 +1,47 @@
 import os
-import numpy as np
 from process_iwr1843 import RadarObject
+import numpy as np
 
-def bin2npy_stream(bin_file, save_dir):
-    os.makedirs(save_dir, exist_ok=True)
-    radar = RadarObject()
+def bin2npy(bin_file, single_radarimg_dir):
+    radarObject = RadarObject()
+    radar_heatmaps = radarObject.processRadarDataHoriVert(bin_filename=bin_file)
+    for indx, heatmap in enumerate(radar_heatmaps):
 
-    adc = radar.getadcDataFromDCA1000(bin_file)
-    print("Shape of radar data:", adc.shape)
-
-    for idx in range(radar.numFrame):
-        frame = adc[:, radar.numChirp*idx : radar.numChirp*(idx+1), 0:radar.numADCSamples]
-        heatmap = radar.generateHeatmap(frame)
-
-        out_path = os.path.join(save_dir, f"{idx:09d}.npy")
-        np.save(out_path, heatmap)
-
-        # progress every 10 frames
-        if idx % 10 == 0:
-            print(f"[saved] {os.path.basename(save_dir)} frame {idx}")
+        radarpc_filename = single_radarimg_dir + '_' + str(indx).zfill(6) + '.npy'
+        np.save(radarpc_filename, heatmap)
+        print("%s scene %d frame has been saved!" % (single_radarimg_dir.split("/")[-1], indx))
 
 if __name__ == "__main__":
 
-    radar_root = "radar"                 # your radar/ folder
-    save_root  = "preprocess_radar"       # output root
-    os.makedirs(save_root, exist_ok=True)
+    # need to be set manually
+    radar_dir =  'your path to the raw radar signals from HuPR' # your path to the raw radar signals from HuPR
+    radar_img_dir = 'your path to save the npy radar signal files' # your path to save the npy radar signal files
 
-    # scenes to process
-    target_singles = [1,2,3, 4, 5, 6, 7, 8, 9, 10]
+    # Create the folder if it doesn't exist
+    if not os.path.exists(radar_img_dir):
+        os.makedirs(radar_img_dir)
 
-    # numerical sort ensures 3 → 10 in order
-    single_folders = sorted(
-        [f for f in os.listdir(radar_root) if f.startswith("single_")],
-        key=lambda x: int(x.split("_")[-1])
-    )
+    # 58 scenes
+    target_singles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15,
+                      16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
+                      28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39,
+                      43, 100, 110, 120, 140, 150, 160, 170, 180, 190,
+                      257, 259, 262, 265, 268, 270, 272, 273, 275, 276]
 
-    for folder in single_folders:
-        sid = int(folder.split("_")[-1])
-        if sid not in target_singles:
+    single_radar_folders = sorted(os.listdir(radar_dir))
+    for single_radar_folder in single_radar_folders:
+        single_id = int(single_radar_folder.split('_')[-1])
+        print('single_',single_id)
+        if single_id not in target_singles:
+            print(single_id,'continue')
             continue
 
-        print(f"\nProcessing single_{sid} (vertical only)...")
+        single_radar_dir = os.path.join(radar_dir,single_radar_folder) # 'radar/single_257'
+        single_radarimg_dir = os.path.join(radar_img_dir,single_radar_dir.split('/')[-1]) #radar_img/single_257
 
-        bin_file = os.path.join(radar_root, f"single_{sid}", "vert", "adc_data.bin")
-        save_dir = os.path.join(save_root, f"single_{sid}", "vert")
-        os.makedirs(save_dir, exist_ok=True)
+        # use the vert radar in HuPR dataset
+        bin_file = single_radar_dir + '/vert/adc_data.bin'
 
-        # skip if already converted
-        if any(name.endswith(".npy") for name in os.listdir(save_dir)):
-            print(f"Skip single_{sid}: {save_dir} already has npy files.")
-            continue
+        bin2npy(bin_file, single_radarimg_dir)
 
-        bin2npy_stream(bin_file, save_dir)
-
-        print(f"✅ Done single_{sid}\n")
+        print("%s file saved successfully!"%(single_radar_folder))

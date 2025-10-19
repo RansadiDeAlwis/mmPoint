@@ -1,7 +1,9 @@
 numpy>=1.26.0
 h5py>=3.10.0
 munch
-PyYAML
-argparse
+pyyaml
 tqdm
 easydict
+scikit-learn
+open3d
+matplotlib
