@@ -1,0 +1,54 @@
+INFO:root:Munch({'batch_size': 8, 'workers': 8, 'nepoch': 20, 'model_name': 'mmPoint', 'start_epoch': 0, 'work_dir': 'log/', 'flag': 'debug', 'manual_seed': None, 'use_mean_feature': False, 'step_interval_to_print': 200, 'epoch_interval_to_save': 10, 'epoch_interval_to_val': 10, 'varying_constant': '0.01, 0.1, 0.5, 1', 'varying_constant_epochs': '5, 15, 30', 'dir_outpath': 'S-PMP-output', 'nk': 20, 'nz': 128, 'lr': 0.0001, 'lr_decay': True, 'lr_decay_interval': 20, 'lr_decay_rate': 0.5, 'lr_step_decay_epochs': None, 'lr_step_decay_rates': None, 'lr_clip': 1e-06, 'optimizer': 'Adam', 'weight_decay': 0, 'betas': '0.9, 0.999', 'layers': '1, 1, 1, 1', 'distribution_loss': 'KLD', 'knn_list': '16', 'pk': 10, 'radius': 0.5, 'normalization': 'UnitBall', 'pointcloud_path': '/content/mmpoint_dataset/groundtruth', 'radar_path': '/content/mmpoint_dataset/radar', 'cache_path': '/content/mmPoint/cache', 'dir_checkpoints': 'S-PMP-output/mmPoint-1019_2016/checkpoints'})
+INFO:root:Random Seed: 4380
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 0/20] EpochTime = 106.666 (s) Losses = ['396.7894', '76.2020']
+INFO:root:Saving net...
+INFO:root:Testing...
+INFO:root:Saving net...
+INFO:root:Saving net...
+INFO:root:[Epoch 0/20] TestTime = 13.432 (s) Curr_cdl1 = 256.24284117172164 Best_cdl1 = 256.24284117172164 Curr_cdl2 = 26.948500890284777 Best_cdl2 = 26.948500890284777
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 1/20] EpochTime = 105.554 (s) Losses = ['256.7297', '24.9279']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 2/20] EpochTime = 105.413 (s) Losses = ['250.7441', '23.9252']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 3/20] EpochTime = 105.703 (s) Losses = ['249.7040', '23.4302']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 4/20] EpochTime = 105.939 (s) Losses = ['244.3139', '22.4722']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 5/20] EpochTime = 105.475 (s) Losses = ['240.1503', '21.8283']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 6/20] EpochTime = 105.084 (s) Losses = ['236.3084', '21.1514']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 7/20] EpochTime = 105.545 (s) Losses = ['237.5350', '21.1729']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 8/20] EpochTime = 105.761 (s) Losses = ['233.2222', '20.4188']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 9/20] EpochTime = 105.712 (s) Losses = ['224.2044', '18.9179']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 10/20] EpochTime = 105.972 (s) Losses = ['216.1484', '17.6133']
+INFO:root:Saving net...
+INFO:root:Testing...
+INFO:root:[Epoch 10/20] TestTime = 13.602 (s) Curr_cdl1 = 290.08715817083913 Best_cdl1 = 256.24284117172164 Curr_cdl2 = 36.882527909862496 Best_cdl2 = 26.948500890284777
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 11/20] EpochTime = 106.079 (s) Losses = ['209.1040', '16.3896']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 12/20] EpochTime = 105.720 (s) Losses = ['202.3989', '15.2655']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 13/20] EpochTime = 105.836 (s) Losses = ['204.2227', '15.5827']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 14/20] EpochTime = 106.039 (s) Losses = ['200.2066', '14.8711']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 15/20] EpochTime = 105.771 (s) Losses = ['197.0756', '14.5321']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 16/20] EpochTime = 105.187 (s) Losses = ['188.5221', '13.2792']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 17/20] EpochTime = 105.982 (s) Losses = ['182.5723', '12.4199']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 18/20] EpochTime = 105.900 (s) Losses = ['182.1477', '12.3492']
+INFO:root: 
+INFO:root:mmPoint-1019_2016[Epoch 19/20] EpochTime = 105.643 (s) Losses = ['188.6123', '13.3312']
+INFO:root:Testing...
+INFO:root:Saving net...
+INFO:root:Saving net...
+INFO:root:[Epoch 19/20] TestTime = 13.698 (s) Curr_cdl1 = 232.39276837557554 Best_cdl1 = 232.39276837557554 Curr_cdl2 = 23.788778732220333 Best_cdl2 = 23.788778732220333
